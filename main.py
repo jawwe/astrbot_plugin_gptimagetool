@@ -122,6 +122,9 @@ class GPTImageToolPlugin(Star):
                 section = raw_settings.get(section_name)
                 if isinstance(section, dict):
                     self._settings[section_name].update(section)
+            if isinstance(raw_settings.get("debug"), bool):
+                self._settings["debug"] = raw_settings["debug"]
+            self._debug("Loaded persisted settings.")
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             logger.warning("Failed to load GPT Image Tool settings: %s", exc)
 
@@ -145,6 +148,12 @@ class GPTImageToolPlugin(Star):
 
         try:
             auxiliary = self._resolved_auxiliary_settings()
+            self._debug(
+                "Generating image with model=%s prompt_length=%d auxiliary=%s.",
+                primary["model"],
+                len(prompt),
+                auxiliary is not None,
+            )
             if auxiliary is not None:
                 prompt = await self._client.optimize_prompt(
                     base_url=auxiliary["base_url"],
@@ -152,6 +161,9 @@ class GPTImageToolPlugin(Star):
                     model=auxiliary["model"],
                     system_prompt=auxiliary["system_prompt"],
                     prompt=prompt,
+                )
+                self._debug(
+                    "Prompt optimization completed: prompt_length=%d.", len(prompt)
                 )
             image = await self._client.generate_image(
                 base_url=primary["base_url"],
@@ -165,8 +177,10 @@ class GPTImageToolPlugin(Star):
             return
 
         if "url" in image:
+            self._debug("Image generation completed with a URL response.")
             yield event.image_result(image["url"])
             return
+        self._debug("Image generation completed with a Base64 response.")
         yield event.chain_result([Image.fromBase64(image["b64_json"])])
 
     async def get_settings(self):
@@ -182,6 +196,10 @@ class GPTImageToolPlugin(Star):
         payload = await get_request_json()
         if not isinstance(payload, dict):
             return error_response("配置数据必须是 JSON 对象。")
+        if "debug" in payload:
+            if not isinstance(payload["debug"], bool):
+                return error_response("Debug 模式必须是布尔值。")
+            self._settings["debug"] = payload["debug"]
 
         for section_name in ("primary", "auxiliary"):
             section = payload.get(section_name, {})
@@ -225,6 +243,11 @@ class GPTImageToolPlugin(Star):
         except OSError as exc:
             logger.exception("Failed to save GPT Image Tool settings")
             return error_response(f"保存配置失败：{exc}", status_code=500)
+        self._debug(
+            "Settings saved: primary_model=%s auxiliary_enabled=%s.",
+            self._settings["primary"]["model"],
+            self._settings["auxiliary"]["enabled"],
+        )
         return json_response(self._public_settings())
 
     async def get_models(self):
@@ -241,30 +264,34 @@ class GPTImageToolPlugin(Star):
             return error_response("未知的模型配置目标。")
 
         primary = self._settings["primary"]
+        saved = self._settings[target]
         source = payload.get(target, {})
         if not isinstance(source, dict):
             return error_response("模型接口配置必须是对象。")
-        base_url = str(source.get("base_url", "")).strip()
-        api_key = str(source.get("api_key", "")).strip()
+        base_url = str(source.get("base_url", "")).strip() or saved["base_url"]
+        api_key = str(source.get("api_key", "")).strip() or saved["api_key"]
         if target == "auxiliary":
             base_url = base_url or primary["base_url"]
             api_key = api_key or primary["api_key"]
         if not base_url or not api_key:
             return error_response("请先输入 API 地址和 Key。")
         try:
+            self._debug("Listing %s models from %s.", target, base_url)
             models = await self._client.list_models(base_url, api_key)
         except OpenAICompatibleError as exc:
             return error_response(str(exc), status_code=502)
+        self._debug("Listed %d %s models.", len(models), target)
         return json_response({"models": models})
 
     @staticmethod
-    def _default_settings() -> dict[str, dict[str, Any]]:
+    def _default_settings() -> dict[str, Any]:
         """Create the complete default settings document.
 
         Returns:
             Default primary and auxiliary model settings.
         """
         return {
+            "debug": False,
             "primary": {"base_url": "", "api_key": "", "model": DEFAULT_IMAGE_MODEL},
             "auxiliary": {
                 "enabled": False,
@@ -284,6 +311,7 @@ class GPTImageToolPlugin(Star):
         primary = self._settings["primary"]
         auxiliary = self._settings["auxiliary"]
         return {
+            "debug": self._settings["debug"],
             "primary": {
                 "base_url": primary["base_url"],
                 "model": primary["model"],
@@ -299,6 +327,16 @@ class GPTImageToolPlugin(Star):
                 and not auxiliary["api_key"],
             },
         }
+
+    def _debug(self, message: str, *args: Any) -> None:
+        """Write non-sensitive plugin diagnostics when debug mode is enabled.
+
+        Args:
+            message: Logging format string without secrets.
+            *args: Values interpolated into the logging message.
+        """
+        if self._settings["debug"]:
+            logger.info("[GPT Image Tool] " + message, *args)
 
     def _resolved_auxiliary_settings(self) -> dict[str, str] | None:
         """Resolve inherited auxiliary credentials before prompt optimization.

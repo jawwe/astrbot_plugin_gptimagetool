@@ -15,6 +15,14 @@
 
       <form id="settings-form">
         <section class="card">
+          <label class="checkbox">
+            <input id="debug-enabled" type="checkbox" />
+            启用 Debug 模式
+          </label>
+          <p class="hint">将调用阶段、模型和结果类型写入 AstrBot 系统日志，不记录 API Key 或完整提示词。</p>
+        </section>
+
+        <section class="card">
           <h2>主图像接口</h2>
           <label>
             API Base URL

@@ -1,5 +1,6 @@
 const bridge = window.AstrBotPluginPage;
 const fields = {
+  debug: document.querySelector("#debug-enabled"),
   primary: {
     baseUrl: document.querySelector("#primary-base-url"),
     apiKey: document.querySelector("#primary-api-key"),
@@ -43,6 +44,7 @@ function toggleAuxiliary() {
 
 function pagePayload() {
   return {
+    debug: fields.debug.checked,
     primary: {
       base_url: fields.primary.baseUrl.value.trim(),
       api_key: fields.primary.apiKey.value,
@@ -69,7 +71,10 @@ async function loadModels(target) {
     config.base_url ||= primary.baseUrl.value.trim();
     config.api_key ||= primary.apiKey.value.trim();
   }
-  if (!config.base_url || !config.api_key) {
+  const hasSavedKey =
+    current.apiKey.dataset.saved === "true" ||
+    (target === "auxiliary" && primary.apiKey.dataset.saved === "true");
+  if (!config.base_url || (!config.api_key && !hasSavedKey)) {
     setStatus("请输入 API 地址和 Key 后再获取模型。", true);
     return;
   }
@@ -89,12 +94,15 @@ async function loadModels(target) {
 
 function render(settings) {
   const { primary, auxiliary } = settings;
+  fields.debug.checked = settings.debug;
   fields.primary.baseUrl.value = primary.base_url;
+  fields.primary.apiKey.dataset.saved = String(primary.api_key_set);
   fields.primary.keyStatus.textContent = primary.api_key_set ? "已保存" : "未设置";
   setModels(fields.primary.model, primary.model ? [primary.model] : [], primary.model);
 
   fields.auxiliary.enabled.checked = auxiliary.enabled;
   fields.auxiliary.baseUrl.value = auxiliary.base_url;
+  fields.auxiliary.apiKey.dataset.saved = String(auxiliary.api_key_set);
   fields.auxiliary.keyStatus.textContent = auxiliary.api_key_set
     ? "已保存"
     : auxiliary.inherits_primary
