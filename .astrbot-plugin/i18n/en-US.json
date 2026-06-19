@@ -3,6 +3,10 @@
     "settings": {
       "title": "GPT Image Tool Settings",
       "description": "Configure an OpenAI-compatible image-generation API."
+    },
+    "test": {
+      "title": "GPT Image Tool Test",
+      "description": "Test image generation and the auxiliary model with saved settings."
     }
   }
 }

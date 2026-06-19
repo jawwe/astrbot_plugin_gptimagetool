@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GPT Image Tool Test</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="test-page">
+      <header>
+        <h1 id="title">GPT Image Tool 测试</h1>
+        <p id="description">使用保存的配置直接验证图像和辅助模型。</p>
+      </header>
+
+      <section class="card">
+        <h2>图像生成测试</h2>
+        <p class="hint">使用主图像模型；如果已启用提示词优化，会一并执行。</p>
+        <label>
+          图片描述
+          <textarea id="image-prompt" rows="5" placeholder="一只戴着宇航员头盔的橘猫，电影级光影"></textarea>
+        </label>
+        <button id="generate-image" type="button">生成测试图片</button>
+        <img id="image-result" alt="Generated test image" hidden />
+      </section>
+
+      <section class="card">
+        <h2>辅助模型对话测试</h2>
+        <p class="hint">使用辅助模型及其系统提示词；无需先在配置页启用提示词优化。</p>
+        <label>
+          对话内容
+          <textarea id="chat-prompt" rows="5" placeholder="把一只橘猫在月球漫步扩写为绘图提示词"></textarea>
+        </label>
+        <button id="send-chat" type="button">发送测试对话</button>
+        <pre id="chat-result" hidden></pre>
+      </section>
+
+      <output id="status" aria-live="polite"></output>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

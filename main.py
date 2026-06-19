@@ -109,6 +109,18 @@ class GPTImageToolPlugin(Star):
             ["POST"],
             "List OpenAI-compatible models",
         )
+        context.register_web_api(
+            f"/{PLUGIN_NAME}/test/image",
+            self.test_image,
+            ["POST"],
+            "Generate a test image",
+        )
+        context.register_web_api(
+            f"/{PLUGIN_NAME}/test/chat",
+            self.test_chat,
+            ["POST"],
+            "Test the auxiliary chat model",
+        )
 
     async def initialize(self) -> None:
         """Load persisted settings after the plugin has been created."""
@@ -283,6 +295,85 @@ class GPTImageToolPlugin(Star):
         self._debug("Listed %d %s models.", len(models), target)
         return json_response({"models": models})
 
+    async def test_image(self):
+        """Generate an image from the Test Page without saving configuration.
+
+        Returns:
+            Image data for browser preview or a Page-compatible error response.
+        """
+        payload = await get_request_json()
+        if not isinstance(payload, dict):
+            return error_response("测试请求必须是 JSON 对象。")
+        prompt = payload.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return error_response("请输入图片描述。")
+
+        primary = self._settings["primary"]
+        if not primary["base_url"] or not primary["api_key"] or not primary["model"]:
+            return error_response("请先完成主图像接口配置。")
+        try:
+            prompt = prompt.strip()
+            auxiliary = self._resolved_auxiliary_settings()
+            self._debug(
+                "Test Page image generation: model=%s prompt_length=%d auxiliary=%s.",
+                primary["model"],
+                len(prompt),
+                auxiliary is not None,
+            )
+            if auxiliary is not None:
+                prompt = await self._client.optimize_prompt(
+                    base_url=auxiliary["base_url"],
+                    api_key=auxiliary["api_key"],
+                    model=auxiliary["model"],
+                    system_prompt=auxiliary["system_prompt"],
+                    prompt=prompt,
+                )
+            image = await self._client.generate_image(
+                base_url=primary["base_url"],
+                api_key=primary["api_key"],
+                model=primary["model"],
+                prompt=prompt,
+            )
+        except OpenAICompatibleError as exc:
+            logger.warning("GPT Image Tool Test Page image request failed: %s", exc)
+            return error_response(str(exc), status_code=502)
+        self._debug("Test Page image generation completed with %s.", next(iter(image)))
+        return json_response({"image": image})
+
+    async def test_chat(self):
+        """Send one prompt to the configured auxiliary model from the Test Page.
+
+        Returns:
+            Auxiliary model text or a Page-compatible error response.
+        """
+        payload = await get_request_json()
+        if not isinstance(payload, dict):
+            return error_response("测试请求必须是 JSON 对象。")
+        prompt = payload.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return error_response("请输入对话内容。")
+        try:
+            auxiliary = self._resolved_auxiliary_settings(require_enabled=False)
+            if auxiliary is None:
+                return error_response("请先完成辅助模型配置。")
+            self._debug(
+                "Test Page chat request: model=%s prompt_length=%d.",
+                auxiliary["model"],
+                len(prompt.strip()),
+            )
+            content = await self._client.optimize_prompt(
+                base_url=auxiliary["base_url"],
+                api_key=auxiliary["api_key"],
+                model=auxiliary["model"],
+                system_prompt=auxiliary["system_prompt"],
+                prompt=prompt.strip(),
+            )
+        except OpenAICompatibleError as exc:
+            logger.warning("GPT Image Tool Test Page chat request failed: %s", exc)
+            return error_response(str(exc), status_code=502)
+        self._debug("Test Page chat completed: response_length=%d.", len(content))
+        return json_response({"content": content})
+
     @staticmethod
     def _default_settings() -> dict[str, Any]:
         """Create the complete default settings document.
@@ -338,8 +429,13 @@ class GPTImageToolPlugin(Star):
         if self._settings["debug"]:
             logger.info("[GPT Image Tool] " + message, *args)
 
-    def _resolved_auxiliary_settings(self) -> dict[str, str] | None:
+    def _resolved_auxiliary_settings(
+        self, *, require_enabled: bool = True
+    ) -> dict[str, str] | None:
         """Resolve inherited auxiliary credentials before prompt optimization.
+
+        Args:
+            require_enabled: Return None when the auxiliary toggle is disabled.
 
         Returns:
             Active auxiliary configuration, or None when it is disabled.
@@ -348,7 +444,7 @@ class GPTImageToolPlugin(Star):
             OpenAICompatibleError: If enabled auxiliary settings are incomplete.
         """
         auxiliary = self._settings["auxiliary"]
-        if not auxiliary["enabled"]:
+        if require_enabled and not auxiliary["enabled"]:
             return None
         primary = self._settings["primary"]
         resolved = {

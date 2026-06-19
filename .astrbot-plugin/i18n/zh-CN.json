@@ -3,6 +3,10 @@
     "settings": {
       "title": "GPT Image Tool 配置",
       "description": "配置 OpenAI 兼容的图像生成接口。"
+    },
+    "test": {
+      "title": "GPT Image Tool 测试",
+      "description": "使用已保存的模型配置测试图像生成与辅助模型对话。"
     }
   }
 }
