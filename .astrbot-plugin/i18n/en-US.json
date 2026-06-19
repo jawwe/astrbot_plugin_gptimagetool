@@ -1,0 +1,8 @@
+{
+  "pages": {
+    "settings": {
+      "title": "GPT Image Tool Settings",
+      "description": "Configure an OpenAI-compatible image-generation API."
+    }
+  }
+}

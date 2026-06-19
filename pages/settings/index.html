@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GPT Image Tool</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="settings">
+      <header>
+        <h1 id="title">GPT Image Tool 配置</h1>
+        <p id="description">配置 OpenAI 兼容的图像生成接口。</p>
+      </header>
+
+      <form id="settings-form">
+        <section class="card">
+          <h2>主图像接口</h2>
+          <label>
+            API Base URL
+            <input id="primary-base-url" type="url" placeholder="https://api.example.com/v1" required />
+          </label>
+          <label>
+            API Key
+            <input id="primary-api-key" type="password" autocomplete="new-password" placeholder="输入新 Key 或保留为空" />
+            <small id="primary-key-status"></small>
+          </label>
+          <label>
+            图像模型
+            <select id="primary-model"></select>
+          </label>
+          <button id="primary-load-models" type="button">获取模型</button>
+        </section>
+
+        <section class="card">
+          <label class="checkbox">
+            <input id="auxiliary-enabled" type="checkbox" />
+            使用辅助模型优化提示词
+          </label>
+          <p class="hint">留空时辅助模型复用主接口地址和 Key。</p>
+          <div id="auxiliary-fields">
+            <label>
+              第二 API Base URL（可选）
+              <input id="auxiliary-base-url" type="url" placeholder="继承主接口" />
+            </label>
+            <label>
+              第二 API Key（可选）
+              <input id="auxiliary-api-key" type="password" autocomplete="new-password" placeholder="继承主接口或输入新 Key" />
+              <small id="auxiliary-key-status"></small>
+            </label>
+            <label>
+              辅助模型
+              <select id="auxiliary-model"></select>
+            </label>
+            <button id="auxiliary-load-models" type="button">获取辅助模型</button>
+            <label>
+              辅助模型系统提示词
+              <textarea id="auxiliary-system-prompt" rows="6"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button id="save" type="submit">保存配置</button>
+          <output id="status" aria-live="polite"></output>
+        </div>
+      </form>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

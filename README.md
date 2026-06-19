@@ -1,14 +1,26 @@
-# astrbot-plugin-helloworld
+# GPT Image Tool
 
-AstrBot 插件模板 / A template plugin for AstrBot plugin feature
+An AstrBot plugin that generates images with an OpenAI-compatible image API.
 
-> [!NOTE]
-> This repo is just a template of [AstrBot](https://github.com/AstrBotDevs/AstrBot) Plugin.
-> 
-> [AstrBot](https://github.com/AstrBotDevs/AstrBot) is an agentic assistant for both personal and group conversations. It can be deployed across dozens of mainstream instant messaging platforms, including QQ, Telegram, Feishu, DingTalk, Slack, LINE, Discord, Matrix, etc. In addition, it provides a reliable and extensible conversational AI infrastructure for individuals, developers, and teams. Whether you need a personal AI companion, an intelligent customer support agent, an automation assistant, or an enterprise knowledge base, AstrBot enables you to quickly build AI applications directly within your existing messaging workflows.
+## Usage
 
-# Supports
+Open the **Settings** Page from the plugin detail page, configure the primary API,
+select an image model, then send:
 
-- [AstrBot Repo](https://github.com/AstrBotDevs/AstrBot)
-- [AstrBot Plugin Development Docs (Chinese)](https://docs.astrbot.app/dev/star/plugin-new.html)
-- [AstrBot Plugin Development Docs (English)](https://docs.astrbot.app/en/dev/star/plugin-new.html)
+```text
+画图 一只戴着宇航员头盔的橘猫，电影级光影
+```
+
+The primary API base URL is the complete OpenAI-compatible root, normally ending in
+`/v1`. The plugin calls `{base_url}/models` to list models and
+`{base_url}/images/generations` to generate images.
+
+## Prompt optimization
+
+Prompt optimization is optional. When enabled, the auxiliary model first calls
+`{base_url}/chat/completions` and then the optimized prompt is sent to the image
+model. The auxiliary API address and key inherit the primary configuration unless
+they are explicitly supplied.
+
+API keys are stored in AstrBot's plugin data directory and are never returned to the
+Page after saving.

@@ -1,0 +1,8 @@
+{
+  "pages": {
+    "settings": {
+      "title": "GPT Image Tool 配置",
+      "description": "配置 OpenAI 兼容的图像生成接口。"
+    }
+  }
+}
