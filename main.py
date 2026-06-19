@@ -10,11 +10,57 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import Image
 from astrbot.api.star import Context, Star, register
-from astrbot.api.web import error_response, json_response, request
 from astrbot.core.star.filter.command import GreedyStr
 from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
 
 from .openai_compatible import OpenAICompatibleClient, OpenAICompatibleError
+
+try:
+    from astrbot.api.web import error_response, json_response, request
+
+    async def get_request_json() -> Any:
+        """Read JSON through the current AstrBot Web API request proxy.
+
+        Returns:
+            Parsed JSON payload or an empty object.
+        """
+        return await request.json(default={})
+
+except ModuleNotFoundError:
+    from quart import jsonify, request
+
+    def json_response(data: Any, *, status_code: int = 200):
+        """Build a JSON response for AstrBot versions without astrbot.api.web.
+
+        Args:
+            data: JSON-serializable response body.
+            status_code: HTTP status code.
+
+        Returns:
+            Quart JSON response.
+        """
+        return jsonify(data), status_code
+
+    def error_response(message: str, *, status_code: int = 400):
+        """Build an error envelope compatible with the Page bridge.
+
+        Args:
+            message: Safe error message for the Page.
+            status_code: HTTP status code.
+
+        Returns:
+            Quart JSON error response.
+        """
+        return jsonify({"status": "error", "message": message}), status_code
+
+    async def get_request_json() -> Any:
+        """Read JSON through the legacy Quart request context.
+
+        Returns:
+            Parsed JSON payload or an empty object.
+        """
+        return await request.get_json(silent=True) or {}
+
 
 PLUGIN_NAME = "astrbot_plugin_gptimagetool"
 DEFAULT_IMAGE_MODEL = "gpt-image-2"
@@ -133,7 +179,7 @@ class GPTImageToolPlugin(Star):
         Returns:
             A sanitized settings object or a Page-compatible error response.
         """
-        payload = await request.json(default={})
+        payload = await get_request_json()
         if not isinstance(payload, dict):
             return error_response("配置数据必须是 JSON 对象。")
 
@@ -187,7 +233,7 @@ class GPTImageToolPlugin(Star):
         Returns:
             A model-id list or a Page-compatible error response.
         """
-        payload = await request.json(default={})
+        payload = await get_request_json()
         if not isinstance(payload, dict):
             return error_response("模型请求必须是 JSON 对象。")
         target = payload.get("target")
